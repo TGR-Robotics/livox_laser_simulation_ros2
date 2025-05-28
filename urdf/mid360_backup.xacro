@@ -3,15 +3,11 @@
 
   <xacro:property name="M_PI" value="3.1415926"/> 
   <xacro:property name="laser_min_range" value="0.1"/>
-  <!-- 提高最大范围以获得更广的探测范围 -->
-  <xacro:property name="laser_max_range" value="80.0"/>
-  <!-- 提高采样点数以获得更密集的点云 -->
-  <xacro:property name="samples" value="25000"/>
-  <!-- 提高分辨率以获得更好的点云质量 -->
-  <xacro:property name="resolution" value="0.003"/>
+  <xacro:property name="laser_max_range" value="200.0"/>
+  <xacro:property name="samples" value="40000"/>
+  <xacro:property name="resolution" value="0.002"/>
   <xacro:property name="noise_mean" value="0.0"/>
-  <!-- 适度降低噪声模拟以提高性能 -->
-  <xacro:property name="noise_stddev" value="0.005"/>
+  <xacro:property name="noise_stddev" value="0.01"/>
 
   <xacro:property name="mass" value="0.4" />
   <xacro:property name="length" value="0.1" />
@@ -49,22 +45,19 @@
       <sensor type="ray" name="${name}">
         <pose>0 0 0 0 0 0</pose>
         <visualize>true</visualize>
-        <!-- 提高更新频率以获得更流畅的点云数据 -->
-        <update_rate>5</update_rate>
+        <update_rate>10</update_rate>
         <!-- This ray plgin is only for visualization. -->
         <plugin name="${name}_plugin" filename="libros2_livox.so">
 			<ray>
 			  <scan>
 				<horizontal>
-				<!-- 提高水平采样点以获得更密集的水平扫描 -->
-				<samples>80</samples>
+				<samples>100</samples>
 				<resolution>1</resolution>
 				<min_angle>${0}</min_angle>
 				<max_angle>${2*M_PI}</max_angle>
 				</horizontal>
 				<vertical>
-				<!-- 提高垂直采样点以获得更密集的垂直扫描 -->
-				<samples>15</samples>
+				<samples>360</samples>
 				<resolution>1</resolution>
 				<min_angle>${-7.22/180*M_PI}</min_angle>
 				<max_angle>${55.22/180*M_PI}</max_angle>
@@ -81,9 +74,9 @@
 				<stddev>${noise_stddev}</stddev>
 			  </noise>
 			</ray>
-          <visualize>true</visualize>  <!-- 启用可视化以确保数据正常发布 -->
+          <visualize>false</visualize>
 		  <samples>${samples}</samples>
-		  <downsample>2</downsample>  <!-- 适度下采样以平衡性能和质量 -->
+		  <downsample>1</downsample>
 		  <csv_file_name>$(find ros2_livox_simulation)/scan_mode/mid360.csv</csv_file_name>
 		  <topic>${topic}</topic>
         </plugin>
@@ -92,3 +85,4 @@
   </xacro:macro>
 
 </robot>
+

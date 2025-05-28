@@ -87,6 +87,7 @@ set(URDF_FILES
     urdf/mid40.xacro
     urdf/mid70.xacro
     urdf/mid360.xacro
+    urdf/mid360_backup.xacro
     urdf/tele.xacro
     urdf/horizon.xacro
     urdf/HAP.xacro
