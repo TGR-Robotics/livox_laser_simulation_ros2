@@ -30,14 +30,22 @@
 
   <xacro:macro name="mid360" params="name:='' parent:= 'base_link' topic:='mid360' *origin ">
 
-<link name="${name}">
-<xacro:box_inertia m="${length}" w="${width}" d="${length}" h="${height}"/>
-  <visual>
+    <link name="${name}">
+      <xacro:box_inertia m="${mass}" w="${width}" d="${length}" h="${height}"/>
+      <visual>
         <geometry>
-            <box size="${length} ${width} ${height}"/>
+          <mesh filename="package://venice_robot_description/meshes/mid-360-asm.stl" scale="0.001 0.001 0.001"/>
         </geometry>
-  </visual>
-</link>
+        <material name="blue">
+          <color rgba="0 0 1 1"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${length} ${width} ${height}"/>
+        </geometry>
+      </collision>
+    </link>
 
     <joint name="${name}_joint" type="fixed">
       <parent link="${parent}"/>
