@@ -6,7 +6,7 @@
   <!-- 提高最大范围以获得更广的探测范围 -->
   <xacro:property name="laser_max_range" value="80.0"/>
   <!-- 提高采样点数以获得更密集的点云 -->
-  <xacro:property name="samples" value="25000"/>
+  <xacro:property name="samples" value="20000"/>
   <!-- 提高分辨率以获得更好的点云质量 -->
   <xacro:property name="resolution" value="0.003"/>
   <xacro:property name="noise_mean" value="0.0"/>
@@ -58,7 +58,7 @@
         <pose>0 0 0 0 0 0</pose>
         <visualize>true</visualize>
         <!-- 提高更新频率以获得更流畅的点云数据 -->
-        <update_rate>5</update_rate>
+        <update_rate>10</update_rate>
         <!-- This ray plgin is only for visualization. -->
         <plugin name="${name}_plugin" filename="libros2_livox.so">
 			<ray>
@@ -91,7 +91,7 @@
 			</ray>
           <visualize>true</visualize>  <!-- 启用可视化以确保数据正常发布 -->
 		  <samples>${samples}</samples>
-		  <downsample>2</downsample>  <!-- 适度下采样以平衡性能和质量 -->
+		  <downsample>10</downsample>  <!-- 适度下采样以平衡性能和质量 -->
 		  <csv_file_name>$(find ros2_livox_simulation)/scan_mode/mid360.csv</csv_file_name>
 		  <topic>${topic}</topic>
         </plugin>
