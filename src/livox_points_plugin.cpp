@@ -23,7 +23,7 @@ namespace gazebo
 
     LivoxPointsPlugin::~LivoxPointsPlugin() {}
 
-    void convertDataToRotateInfo(const std::vector<std::vector<double>> &datas, std::vector<AviaRotateInfo> &avia_infos)
+    void convertDataToRotateInfo(const std::vector<std::vector<double>> &datas, std::vector<AviaRotateInfo> &avia_infos, double min_vertical_angle, double max_vertical_angle)
     {
         avia_infos.reserve(datas.size());
         double deg_2_rad = M_PI / 180.0;
@@ -31,10 +31,22 @@ namespace gazebo
         {
             if (data.size() == 3)
             {
+              auto yaw = data[2] * deg_2_rad - M_PI_2;
+            //   CSV 列是 Azimuth / deg（方位角）和 Zenith /
+            //   deg（天顶角）。
+            //   物理关系：elevation（俯仰角） = 90° − zenith。
+            //   俯仰 0°（水平） ⇒ zenith = 90°
+            //   俯仰 −7°（略向下） ⇒ zenith = 90° − (−7°) = 97°
+
+            //   所以想滤掉俯仰 −7°…0°，就等价于滤掉 Zenith
+            //   在 90°…97° 的光束。
+              if (-yaw > min_vertical_angle && -yaw < max_vertical_angle) {
                 avia_infos.emplace_back();
                 avia_infos.back().time = data[0];
                 avia_infos.back().azimuth = data[1] * deg_2_rad;
-                avia_infos.back().zenith = data[2] * deg_2_rad - M_PI_2; //转化成标准的右手系角度
+                avia_infos.back().zenith = yaw; // 转化成标准的右手系角度
+              }
+
             } else {
             RCLCPP_ERROR(rclcpp::get_logger("convertDataToRotateInfo"), "data size is not 3!");
         }
@@ -57,7 +69,9 @@ namespace gazebo
         auto rayElem = sdfPtr->GetElement("ray");
         auto scanElem = rayElem->GetElement("scan");
         auto rangeElem = rayElem->GetElement("range");
-
+        auto verticalElem = scanElem->GetElement("vertical");
+        min_vertical_angle = verticalElem->Get<double>("min_angle");
+        max_vertical_angle = verticalElem->Get<double>("max_angle");
 
         raySensor = _parent;
         auto sensor_pose = raySensor->Pose();
@@ -79,7 +93,7 @@ namespace gazebo
         scanPub = node->Advertise<msgs::LaserScanStamped>(curr_scan_topic+"laserscan", 50);
 
         aviaInfos.clear();
-        convertDataToRotateInfo(datas, aviaInfos);
+        convertDataToRotateInfo(datas, aviaInfos, min_vertical_angle, max_vertical_angle);
         RCLCPP_INFO(rclcpp::get_logger("LivoxPointsPlugin"), "scan info size: %ld", aviaInfos.size());
         maxPointSize = aviaInfos.size();
 
@@ -169,38 +183,44 @@ namespace gazebo
 
             // Calculate point cloud data
             auto rotate_info = pair.second;
-            ignition::math::Quaterniond ray;
-            ray.Euler(ignition::math::Vector3d(0.0, rotate_info.zenith, rotate_info.azimuth));
-            auto axis = ray * ignition::math::Vector3d(1.0, 0.0, 0.0);
-            auto point = range * axis;
+            {
+              ignition::math::Quaterniond ray;
+              ray.Euler(ignition::math::Vector3d(0.0, rotate_info.zenith,
+                                                 rotate_info.azimuth));
+              auto axis = ray * ignition::math::Vector3d(1.0, 0.0, 0.0);
+              auto point = range * axis;
 
-            // Fill the CustomMsg point cloud message
-            livox_ros_driver2::msg::CustomPoint p;
-            p.x = point.X();
-            p.y = point.Y();
-            p.z = point.Z();
-            p.reflectivity = intensity;
+              // Fill the CustomMsg point cloud message
+              livox_ros_driver2::msg::CustomPoint p;
+              p.x = point.X();
+              p.y = point.Y();
+              p.z = point.Z();
+              p.reflectivity = intensity;
 
-            // Fill the PointCloud point cloud message
-            clouds.emplace_back();
-            clouds.back().x = point.X();
-            clouds.back().y = point.Y();
-            clouds.back().z = point.Z();
+              // Fill the PointCloud point cloud message
+              clouds.emplace_back();
+              clouds.back().x = point.X();
+              clouds.back().y = point.Y();
+              clouds.back().z = point.Z();
 
-            // Fill the PointCloud point cloud message
-            clouds.emplace_back();
-            clouds.back().x = point.X();
-            clouds.back().y = point.Y();
-            clouds.back().z = point.Z();
+              // Fill the PointCloud point cloud message
+            //   clouds.emplace_back();
+            //   clouds.back().x = point.X();
+            //   clouds.back().y = point.Y();
+            //   clouds.back().z = point.Z();
 
-            // Calculate timestamp offset
-            boost::chrono::high_resolution_clock::time_point end_time = boost::chrono::high_resolution_clock::now();
-            boost::chrono::nanoseconds elapsed_time = boost::chrono::duration_cast<boost::chrono::nanoseconds>(end_time - start_time);
-            p.offset_time = elapsed_time.count();
+              // Calculate timestamp offset
+              boost::chrono::high_resolution_clock::time_point end_time =
+                  boost::chrono::high_resolution_clock::now();
+              boost::chrono::nanoseconds elapsed_time =
+                  boost::chrono::duration_cast<boost::chrono::nanoseconds>(
+                      end_time - start_time);
+              p.offset_time = elapsed_time.count();
 
-            // Add point cloud data to the CustomMsg message
-            pp_livox.points.push_back(p);
-            count++;
+              // Add point cloud data to the CustomMsg message
+              pp_livox.points.push_back(p);
+              count++;
+            }
         }
 
         if (scanPub && scanPub->HasConnections()) scanPub->Publish(laserMsg);

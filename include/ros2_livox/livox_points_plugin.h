@@ -114,6 +114,8 @@ namespace gazebo
 
       double maxDist = 400.0;
       double minDist = 0.1;
+      double min_vertical_angle = -7.0 * M_PI / 180; //-7 degree
+      double max_vertical_angle = 55 * M_PI / 180; //55 degree
    };
 
 } // namespace gazebo
