@@ -33,6 +33,7 @@
     <link name="${name}">
       <xacro:box_inertia m="${mass}" w="${width}" d="${length}" h="${height}"/>
       <visual>
+       <origin xyz="0 0 0" rpy="${M_PI/2} 0 ${M_PI}"/>
         <geometry>
           <mesh filename="package://venice_robot_description/meshes/mid-360-asm.stl" scale="0.001 0.001 0.001"/>
         </geometry>
