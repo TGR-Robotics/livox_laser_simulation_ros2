@@ -29,6 +29,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(livox_ros_driver2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS chrono)
+find_package(rcutils REQUIRED)
+find_package(epic_common REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -49,15 +51,22 @@ install(DIRECTORY include/
 
 add_library(ros2_livox SHARED src/livox_points_plugin.cpp src/livox_ode_multiray_shape.cpp)
 target_link_libraries(ros2_livox ${GAZEBO_LIBRARIES} RayPlugin GpuRayPlugin)
-ament_target_dependencies(ros2_livox rclcpp std_msgs sensor_msgs geometry_msgs gazebo_dev gazebo_ros tf2_ros livox_ros_driver2 )
+ament_target_dependencies(ros2_livox rclcpp std_msgs sensor_msgs geometry_msgs gazebo_dev gazebo_ros tf2_ros livox_ros_driver2 rcutils epic_common)
 target_link_libraries(ros2_livox libprotobuf.so.9)
 target_link_libraries(ros2_livox libboost_chrono.so.1.71.0)
 target_include_directories(ros2_livox PRIVATE include)
 
+# Add executable for csv_main
+add_executable(csv_main src/csv_main.cpp)
+ament_target_dependencies(csv_main rclcpp std_msgs rcutils epic_common)
+target_link_libraries(csv_main epic_common::epic_common)
+target_link_libraries(csv_main glog::glog)
+
 #install(TARGETS ros2_livox DESTINATION lib/${PROJECT_NAME})
 
-install(TARGETS ros2_livox
-    LIBRARY DESTINATION lib)
+install(TARGETS ros2_livox csv_main
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -76,6 +85,7 @@ set(CSV_FILES
     scan_mode/horizon.csv
     scan_mode/HAP.csv
     scan_mode/avia.csv
+    scan_mode/mid360_vertical.csv
 )
 foreach(CSV_FILE ${CSV_FILES})
     configure_file(${CSV_FILE} ${CMAKE_CURRENT_BINARY_DIR}/${CSV_FILE} COPYONLY)
