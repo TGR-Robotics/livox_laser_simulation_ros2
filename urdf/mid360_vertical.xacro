@@ -6,12 +6,12 @@
   <!-- 提高最大范围以获得更广的探测范围 -->
   <xacro:property name="laser_max_range" value="80.0"/>
   <!-- 提高采样点数以获得更密集的点云 -->
-  <xacro:property name="samples" value="240000"/>
+  <xacro:property name="samples" value="20000"/>
   <!-- 提高分辨率以获得更好的点云质量 -->
-  <xacro:property name="resolution" value="0.001"/>
+  <xacro:property name="resolution" value="0.003"/>
   <xacro:property name="noise_mean" value="0.0"/>
   <!-- 适度降低噪声模拟以提高性能 -->
-  <xacro:property name="noise_stddev" value="0.01"/>
+  <xacro:property name="noise_stddev" value="0.005"/>
 
   <xacro:property name="mass" value="0.4" />
   <xacro:property name="length" value="0.1" />
@@ -28,7 +28,7 @@
 
 
 
-  <xacro:macro name="mid360" params="name:='' parent:= 'base_link' topic:='mid360' *origin ">
+  <xacro:macro name="mid360_vertical" params="name:='' parent:= 'base_link' topic:='mid360_vertical' *origin ">
 
     <link name="${name}">
       <xacro:box_inertia m="${mass}" w="${width}" d="${length}" h="${height}"/>
@@ -66,16 +66,16 @@
 			  <scan>
 				<horizontal>
 				<!-- 提高水平采样点以获得更密集的水平扫描 -->
-				<samples>240</samples>
+				<samples>80</samples>
 				<resolution>1</resolution>
 				<min_angle>${0}</min_angle>
 				<max_angle>${2*M_PI}</max_angle>
 				</horizontal>
 				<vertical>
 				<!-- 提高垂直采样点以获得更密集的垂直扫描 -->
-				<samples>16</samples>
+				<samples>15</samples>
 				<resolution>1</resolution>
-				<min_angle>${-7/180*M_PI}</min_angle>
+				<min_angle>${0/180*M_PI}</min_angle>
 				<max_angle>${55.22/180*M_PI}</max_angle>
 				</vertical>
 			  </scan>
@@ -92,8 +92,8 @@
 			</ray>
           <visualize>true</visualize>  <!-- 启用可视化以确保数据正常发布 -->
 		  <samples>${samples}</samples>
-		  <downsample>1</downsample>  <!-- 适度下采样以平衡性能和质量 -->
-		  <csv_file_name>$(find ros2_livox_simulation)/scan_mode/mid360.csv</csv_file_name>
+		  <downsample>10</downsample>  <!-- 适度下采样以平衡性能和质量 -->
+		  <csv_file_name>$(find ros2_livox_simulation)/scan_mode/mid360_vertical.csv</csv_file_name>
 		  <topic>${topic}</topic>
         </plugin>
       </sensor>
