@@ -75,7 +75,7 @@
 				<!-- 提高垂直采样点以获得更密集的垂直扫描 -->
 				<samples>16</samples>
 				<resolution>1</resolution>
-				<min_angle>${0/180*M_PI}</min_angle>
+				<min_angle>${5.0/180*M_PI}</min_angle>
 				<max_angle>${55.22/180*M_PI}</max_angle>
 				</vertical>
 			  </scan>
