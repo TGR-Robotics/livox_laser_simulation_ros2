@@ -61,18 +61,28 @@ void epic_common_log_handler(
 int main(int argc, char const* argv[]) {
     (void)argc;  // 避免未使用参数警告
     (void)argv;  // 避免未使用参数警告
-    // 从环境变量获取日志文件路径，如果没有设置则使用默认值
-    const char* log_dir_env = std::getenv("LIVOX_CSV_LOG_DIR");
-    std::string log_path = "livox_csv_main.log";  // 默认值
+    // 从环境变量获取日志文件名前缀和目录
+    const char* log_dir_env = std::getenv("NAV2_LOG_DIR");
+    const char* log_filename_env = std::getenv("NAV2_LOG_FILENAME");
     
+    std::string node_name = "livox_csv_main";
+    std::string log_name = node_name;  // 默认使用节点名称
+    std::string log_path = node_name + ".log";  // 默认值
+    
+    // 如果环境变量都不为空，组合路径和名称
+    if (log_filename_env != nullptr && std::string(log_filename_env) != "") {
+        log_path =  std::string(log_filename_env) + ".log";
+    }
+    
+    // 如果设置了日志目录，添加到路径前
     if (log_dir_env != nullptr && std::string(log_dir_env) != "") {
-        log_path = std::string(log_dir_env) + "/livox_csv_main.log";
+        log_path = std::string(log_dir_env) + "/" + log_path;
     }
 
     // 初始化 epic_common 日志系统
     epic::log::initLog(
         log_path,                     // 日志文件路径
-        "livox_csv_main",             // 应用程序名称
+        node_name,                     // 应用程序名称
         false,                        // 同步日志，确保实时刷新
         false,                        // 不重定向 stderr
         true,                         // 输出到控制台
