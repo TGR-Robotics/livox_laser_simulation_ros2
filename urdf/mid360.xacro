@@ -5,13 +5,12 @@
   <xacro:property name="laser_min_range" value="0.1"/>
   <!-- 提高最大范围以获得更广的探测范围 -->
   <xacro:property name="laser_max_range" value="80.0"/>
-  <!-- 提高采样点数以获得更密集的点云 -->
-  <xacro:property name="samples" value="24000"/>
+  <!-- 每帧射线数 ≈ lidar_samples / lidar_downsample；过大则 CPU 跟不上，实际 Hz 会远低于 update_rate -->
   <!-- 提高分辨率以获得更好的点云质量 -->
-  <xacro:property name="resolution" value="0.001"/>
+  <!-- 与 mid360_vertical.xacro 分开命名，避免 venice 同时 include 时被覆盖 -->
+  <xacro:property name="mid360_range_resolution" value="0.001"/>
   <xacro:property name="noise_mean" value="0.0"/>
-  <!-- 适度降低噪声模拟以提高性能 -->
-  <xacro:property name="noise_stddev" value="0.01"/>
+  <xacro:property name="mid360_noise_stddev" value="0.01"/>
 
   <xacro:property name="mass" value="0.4" />
   <xacro:property name="length" value="0.1" />
@@ -28,7 +27,10 @@
 
 
 
-  <xacro:macro name="mid360" params="name:='' parent:= 'base_link' topic:='mid360' *origin ">
+  <!-- publish_rate: 点云对外发布频率(Hz)，与 Gazebo update_rate 解耦；
+       lidar_samples/downsample 决定每帧射线数(越少→仿真越快→update_rate 越能跑满);
+       非重复扫描模式：每帧顺序推进 CSV 索引，经过足够帧后覆盖完整 FOV。 -->
+  <xacro:macro name="mid360" params="name:='' parent:= 'base_link' topic:='mid360' lidar_update_rate:=50 lidar_samples:=1500 lidar_downsample:=1 lidar_publish_rate:=15 *origin ">
 
     <link name="${name}">
       <xacro:box_inertia m="${mass}" w="${width}" d="${length}" h="${height}"/>
@@ -58,8 +60,8 @@
       <sensor type="ray" name="${name}">
         <pose>0 0 0 0 0 0</pose>
         <visualize>true</visualize>
-        <!-- 提高更新频率以获得更流畅的点云数据 -->
-        <update_rate>10</update_rate>
+        <!-- Gazebo 传感器标称频率（Hz）；实际受物理步长与本帧射线计算耗时限制，改完需 colcon build ros2_livox_simulation -->
+        <update_rate>${lidar_update_rate}</update_rate>
         <!-- This ray plgin is only for visualization. -->
         <plugin name="${name}_plugin" filename="libros2_livox.so">
 			<ray>
@@ -82,17 +84,19 @@
 			  <range>
 				<min>${laser_min_range}</min>
 				<max>${laser_max_range}</max>
-				<resolution>${resolution}</resolution>
+				<resolution>${mid360_range_resolution}</resolution>
 			  </range>
 			  <noise>
 				<type>gaussian</type>
 				<mean>${noise_mean}</mean>
-				<stddev>${noise_stddev}</stddev>
+				<stddev>${mid360_noise_stddev}</stddev>
 			  </noise>
 			</ray>
           <visualize>true</visualize>  <!-- 启用可视化以确保数据正常发布 -->
-		  <samples>${samples}</samples>
-		  <downsample>2</downsample>  <!-- 适度下采样以平衡性能和质量 -->
+		  <samples>${lidar_samples}</samples>
+		  <downsample>${lidar_downsample}</downsample>
+		  <!-- 点云对外发布频率，与 Gazebo update_rate 解耦 -->
+		  <publish_rate>${lidar_publish_rate}</publish_rate>
 		  <csv_file_name>$(find ros2_livox_simulation)/scan_mode/mid360.csv</csv_file_name>
 		  <topic>${topic}</topic>
         </plugin>

@@ -244,10 +244,23 @@ namespace gazebo
             InitializeScan(scan);
 
             // 创建Livox自定义消息用于发布CustomMsg类型消息
+            auto now_ns = node_->get_clock()->now().nanoseconds();
             livox_ros_driver2::msg::CustomMsg pp_livox;
-            pp_livox.header.stamp = node_->get_clock()->now();
-            pp_livox.header.frame_id = raySensor->Name();
-            int count = 0;
+
+            // 设置 CustomMsg 头部字段
+            const std::string frame = raySensor->Name();
+            for (size_t fi = 0;
+                 fi < std::min(frame.size(),
+                               static_cast<size_t>(livox_ros_driver2::msg::CustomMsg::MAX_ID_LENGTH));
+                 ++fi) {
+                    pp_livox.frame_id[fi] = static_cast<uint8_t>(frame[fi]);
+            }
+            pp_livox.timebase_ns = now_ns;
+            pp_livox.lidar_id = 0;
+            pp_livox.rsvd[0] = pp_livox.rsvd[1] = pp_livox.rsvd[2] = 0;
+            // pp_livox.header.stamp = node_->get_clock()->now();
+            // pp_livox.header.frame_id = raySensor->Name();
+            // int count = 0;
             boost::chrono::high_resolution_clock::time_point start_time = boost::chrono::high_resolution_clock::now();
 
             // 创建PointCloud消息用于发布PointCloud2类型消息
@@ -260,6 +273,14 @@ namespace gazebo
             for (auto &pair : points_pair)
             {
                 // 获取射线的距离和反射强度
+                uint32_t out_idx = pp_livox.point_num;
+                // if (out_idx >= 21000) {
+                //     // 缓冲区已满，直接发布并开始新窗口
+                //     RCLCPP_WARN_THROTTLE(rclcpp::get_logger("LivoxPointsPlugin"),
+                //         *node_->get_clock(), 5000,
+                //         "Accum buffer full (%u pts), force-publishing.", max_pts);
+                //     break;
+                // }
                 auto range = rayShape->GetRange(pair.first);
                 auto intensity = rayShape->GetRetro(pair.first);
 
@@ -283,30 +304,38 @@ namespace gazebo
                     auto axis = ray * ignition::math::Vector3d(1.0, 0.0, 0.0);
                     auto point = range * axis;
 
-                    // 填充CustomMsg点云消息
-                    livox_ros_driver2::msg::CustomPoint p;
-                    p.x = point.X();
-                    p.y = point.Y();
-                    p.z = point.Z();
-                    p.reflectivity = intensity;  // 反射强度
+                    // // 填充CustomMsg点云消息
+                    // livox_ros_driver2::msg::CustomPoint p;
+                    // p.x = point.X();
+                    // p.y = point.Y();
+                    // p.z = point.Z();
+                    // p.reflectivity = intensity;  // 反射强度
+                    // offset_time：相对于本积累窗口起始的纳秒偏移
+                                        // 计算时间戳偏移量（用于Livox的时间同步）
+                    boost::chrono::high_resolution_clock::time_point end_time = boost::chrono::high_resolution_clock::now();
+                    boost::chrono::nanoseconds elapsed_time = boost::chrono::duration_cast<boost::chrono::nanoseconds>(
+                                            end_time - start_time);
+                    // const double dt_sec = rotate_info.time - t0_sec;
+                    // const uint64_t frame_offset_ns =
+                    //     (now_ns >= accum_start_ns_) ? (now_ns - accum_start_ns_) : 0ULL;
+                    // const uint64_t intra_ns =
+                    //     static_cast<uint64_t>(std::max(0.0, dt_sec * 1e9));
+                    pp_livox.offset_times[out_idx] = elapsed_time.count();
+                    // static_cast<uint32_t>(std::min<uint64_t>(frame_offset_ns + intra_ns, UINT32_MAX));
 
+                    pp_livox.xs[out_idx] = static_cast<float>(point.X());
+                    pp_livox.ys[out_idx] = static_cast<float>(point.Y());
+                    pp_livox.zs[out_idx] = static_cast<float>(point.Z());
+                    pp_livox.reflectivitys[out_idx] = static_cast<uint8_t>(
+                    std::min(255.0, std::max(0.0, static_cast<double>(intensity))));
+                    pp_livox.tags[out_idx] = 0;
+                    pp_livox.lines[out_idx] = 0;
+                    pp_livox.point_num = out_idx + 1;
                     // 填充PointCloud点云消息
                     clouds.emplace_back();
                     clouds.back().x = point.X();
                     clouds.back().y = point.Y();
                     clouds.back().z = point.Z();
-
-                    // 计算时间戳偏移量（用于Livox的时间同步）
-                    boost::chrono::high_resolution_clock::time_point end_time =
-                        boost::chrono::high_resolution_clock::now();
-                    boost::chrono::nanoseconds elapsed_time =
-                        boost::chrono::duration_cast<boost::chrono::nanoseconds>(
-                            end_time - start_time);
-                    p.offset_time = elapsed_time.count();
-
-                    // 将点云数据添加到CustomMsg消息中
-                    pp_livox.points.push_back(p);
-                    count++;
                 }
             }
 
@@ -314,7 +343,7 @@ namespace gazebo
             if (scanPub && scanPub->HasConnections()) scanPub->Publish(laserMsg);
 
             // 设置点云数据数量并发布CustomMsg消息
-            pp_livox.point_num = count;
+            // pp_livox.point_num = count;
             custom_pub->publish(pp_livox);
 
             // 发布PointCloud2类型消息
