@@ -15,8 +15,10 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <gazebo_ros/node.hpp>
+#include <gazebo_ros/conversions/builtin_interfaces.hpp>
 #include <rclcpp/logging.hpp>
 
+#include <gazebo/common/Time.hh>
 #include <gazebo/physics/Model.hh>
 #include <gazebo/physics/MultiRayShape.hh>  // 用于存储最新的激光扫描数据到laserMsg
 #include <gazebo/physics/PhysicsEngine.hh>
@@ -239,12 +241,20 @@ namespace gazebo
             rayShape->Update();
 
             // 创建激光扫描消息并设置时间戳
-            msgs::Set(laserMsg.mutable_time(), world->SimTime());
+            // 使用 Gazebo 仿真时间（gazebo::common::Time，sec + nsec 精度），
+            // 避免依赖 ROS /clock topic 带来的颗粒度问题。
+            // 参考 gazebo_ros_imu_sensor 插件用 sensor->LastUpdateTime() 的做法。
+            const gazebo::common::Time sim_time = raySensor->LastMeasurementTime();
+            msgs::Set(laserMsg.mutable_time(), sim_time);
             msgs::LaserScan *scan = laserMsg.mutable_scan();
             InitializeScan(scan);
 
-            // 创建Livox自定义消息用于发布CustomMsg类型消息
-            auto now_ns = node_->get_clock()->now().nanoseconds();
+            const uint64_t now_ns =
+                static_cast<uint64_t>(sim_time.sec) * 1000000000ULL +
+                static_cast<uint64_t>(sim_time.nsec);
+            const builtin_interfaces::msg::Time stamp =
+                gazebo_ros::Convert<builtin_interfaces::msg::Time>(sim_time);
+
             livox_ros_driver2::msg::CustomMsg pp_livox;
 
             // 设置 CustomMsg 头部字段
@@ -255,17 +265,16 @@ namespace gazebo
                  ++fi) {
                     pp_livox.frame_id[fi] = static_cast<uint8_t>(frame[fi]);
             }
+            pp_livox.publish_time_ns = now_ns;
             pp_livox.timebase_ns = now_ns;
             pp_livox.lidar_id = 0;
             pp_livox.rsvd[0] = pp_livox.rsvd[1] = pp_livox.rsvd[2] = 0;
-            // pp_livox.header.stamp = node_->get_clock()->now();
-            // pp_livox.header.frame_id = raySensor->Name();
-            // int count = 0;
+            // RCLCPP_INFO(rclcpp::get_logger("LivoxPointsPlugin"), "publish time ns: %ld world sim time: %f ros time: %ld", now_ns / 1000, 1000 * world->SimTime().Double(), node_->get_clock()->now().nanoseconds() / 1000);
             boost::chrono::high_resolution_clock::time_point start_time = boost::chrono::high_resolution_clock::now();
 
             // 创建PointCloud消息用于发布PointCloud2类型消息
             sensor_msgs::msg::PointCloud cloud;
-            cloud.header.stamp = node_->get_clock()->now();
+            cloud.header.stamp = stamp;
             cloud.header.frame_id = raySensor->Name();
             auto &clouds = cloud.points;
 
