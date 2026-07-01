@@ -59,6 +59,7 @@
     <gazebo reference="${name}">
       <sensor type="ray" name="${name}">
         <pose>0 0 0 0 0 0</pose>
+        <always_on>true</always_on>
         <visualize>true</visualize>
         <!-- Gazebo 传感器标称频率（Hz）；实际受物理步长与本帧射线计算耗时限制，改完需 colcon build ros2_livox_simulation -->
         <update_rate>${lidar_update_rate}</update_rate>
