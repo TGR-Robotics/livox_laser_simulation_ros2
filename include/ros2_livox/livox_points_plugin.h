@@ -114,6 +114,9 @@ namespace gazebo
 
       double maxDist = 400.0;
       double minDist = 0.1;
+      // 测距高斯噪声（从 sdf <ray><noise> 读取；stddev<=0 时不施加，输出真值）
+      double noiseMean = 0.0;
+      double noiseStddev = 0.0;
       double min_vertical_angle = -7.0 * M_PI / 180; //-7 degree
       double max_vertical_angle = 55 * M_PI / 180; //55 degree
    };

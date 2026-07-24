@@ -10,7 +10,9 @@
   <!-- 与 mid360_vertical.xacro 分开命名，避免 venice 同时 include 时被覆盖 -->
   <xacro:property name="mid360_range_resolution" value="0.001"/>
   <xacro:property name="noise_mean" value="0.0"/>
-  <xacro:property name="mid360_noise_stddev" value="0.01"/>
+  <!-- 测距噪声：随 enable_sensor_noise 开关，默认 0（真值）；由 livox 插件读取 <noise> 并施加 -->
+  <xacro:arg name="enable_sensor_noise" default="false"/>
+  <xacro:property name="mid360_noise_stddev" value="${0.01 if '$(arg enable_sensor_noise)' == 'true' else 0.0}"/>
 
   <xacro:property name="mass" value="0.4" />
   <xacro:property name="length" value="0.1" />

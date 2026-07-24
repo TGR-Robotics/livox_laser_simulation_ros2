@@ -17,6 +17,7 @@
 #include <gazebo_ros/node.hpp>
 #include <gazebo_ros/conversions/builtin_interfaces.hpp>
 #include <rclcpp/logging.hpp>
+#include <ignition/math/Rand.hh>
 
 #include <gazebo/common/Time.hh>
 #include <gazebo/physics/Model.hh>
@@ -196,6 +197,19 @@ namespace gazebo
         // 获取距离范围参数
         minDist = rangeElem->Get<double>("min");
         maxDist = rangeElem->Get<double>("max");
+
+        // 读取测距噪声配置（此前 <noise> 一直未被实现，点云为真值）
+        if (rayElem->HasElement("noise")) {
+            auto noiseElem = rayElem->GetElement("noise");
+            const auto noise_type = noiseElem->Get<std::string>("type");
+            if (noise_type == "gaussian") {
+                noiseMean = noiseElem->Get<double>("mean");
+                noiseStddev = noiseElem->Get<double>("stddev");
+            }
+        }
+        RCLCPP_INFO(rclcpp::get_logger("LivoxPointsPlugin"),
+                    "range noise: mean=%.4f stddev=%.4f (%s)", noiseMean, noiseStddev,
+                    noiseStddev > 0.0 ? "enabled" : "disabled, ground truth");
         
         // 根据CSV数据创建射线：每帧覆盖整个FOV，按固定步长均匀抽样
         auto offset = laserCollision->RelativePose();
@@ -301,6 +315,11 @@ namespace gazebo
                 else if (range <= RangeMin())
                 {
                     range = 0;  // 小于最小范围，设为0
+                }
+                else if (noiseStddev > 0.0)
+                {
+                    // 有效回波上施加高斯测距噪声（enable_sensor_noise 开关控制）
+                    range += ignition::math::Rand::DblNormal(noiseMean, noiseStddev);
                 }
 
                 // 计算点云数据
